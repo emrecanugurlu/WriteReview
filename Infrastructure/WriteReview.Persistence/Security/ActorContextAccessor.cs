@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
@@ -17,26 +18,34 @@ namespace WriteReview.Persistence.Security
         public ActorContextAccessor(IHttpContextAccessor http)
             => _http = http;
 
+        public string? GetUserId()
+        {
+            return _http.HttpContext?.User?
+                .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        public string? GetUserEmail()
+        {
+            return _http.HttpContext?.User?
+                .FindFirst(ClaimTypes.Email)?.Value;
+        }
+
+        public List<string>? GetUserRole()
+        {
+            return _http.HttpContext?.User?
+                .FindAll(ClaimTypes.Role)
+                .Select(c=>c.Value)
+                .ToList();
+        }
+
+
         public ActorContext GetCurrent()
         {
-            var user = _http.HttpContext?.User
-                      ?? throw new UnauthorizedAccessException("Kullanıcı oturumu yok.");
+            Console.WriteLine(_http.HttpContext?.User);
+            Console.WriteLine(Guid.Parse(GetUserId()!));
+            Console.WriteLine(GetUserRole()!);
 
-            var idStr = user.FindFirstValue(ClaimTypes.NameIdentifier)
-                      ?? user.FindFirstValue("sub")
-                      ?? throw new UnauthorizedAccessException("Kullanıcı kimliği bulunamadı.");
-
-            var userId = Guid.Parse(idStr);
-
-            var roles = user.FindAll(ClaimTypes.Role)
-                            .Select(c => c.Value)
-                            .ToArray();
-
-            return new ActorContext
-            {
-                UserId = userId,
-                Roles = roles
-            };
+            return new ActorContext { UserId = Guid.Parse(GetUserId()!), Roles = GetUserRole()!};
         }
     }
 }

@@ -58,10 +58,42 @@ namespace WriteReview.Persistence.Seed
             }
         }
 
+        public static async Task SeedAuthorAsync(UserManager<AppUser> userManager)
+        {
+            if (userManager == null) throw new ArgumentNullException(nameof(userManager));
+
+            const string authorEmail = "author@writereview.com";
+            const string authorPassword = "Author123*";
+
+            var author = await userManager.FindByEmailAsync(authorEmail);
+
+            if (author == null)
+            {
+                author = new AppUser
+                {
+                    UserName = authorEmail,
+                    Email = authorEmail,
+                    FullName = "System Author",
+                    EmailConfirmed = true
+                };
+
+                var result = await userManager.CreateAsync(author, authorPassword);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(author, "Author");
+                }
+                else
+                {
+                    throw new Exception($"Author kullanıcı oluşturulamadı: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                }
+            }
+        }
+
         public static async Task SeedAsync(RoleManager<AppRole> roleManager, UserManager<AppUser> userManager)
         {
             await SeedRolesAsync(roleManager);
             await SeedAdminAsync(userManager);
+            await SeedAuthorAsync(userManager);
         }
     }
 }

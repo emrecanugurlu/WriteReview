@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -45,10 +46,8 @@ namespace WriteReview.API.Controllers
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Email, value: user.Email)
             };
 
             claims = claims.Concat(roles.Select(role => new Claim(ClaimTypes.Role, role))).ToArray();
@@ -65,10 +64,19 @@ namespace WriteReview.API.Controllers
                 signingCredentials: creds
             );
 
+            Response.Cookies.Append("jwt", new JwtSecurityTokenHandler().WriteToken(token), new CookieOptions
+            {
+                HttpOnly = false,                
+                Secure = true,                
+                SameSite = SameSiteMode.None,    
+                Path = "/",
+                Expires = DateTimeOffset.UtcNow.AddHours(12)
+            });
+
             return Ok(new
             {
                 message = "Giriş başarılı",
-                roles = roles,
+                role = roles,
                 token = new JwtSecurityTokenHandler().WriteToken(token)
             });
         }
