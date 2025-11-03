@@ -41,10 +41,6 @@ namespace WriteReview.Persistence.Security
 
         public ActorContext GetCurrent()
         {
-            Console.WriteLine(_http.HttpContext?.User);
-            Console.WriteLine(Guid.Parse(GetUserId()!));
-            Console.WriteLine(GetUserRole()!);
-
             return new ActorContext { UserId = Guid.Parse(GetUserId()!), Roles = GetUserRole()!};
         }
     }

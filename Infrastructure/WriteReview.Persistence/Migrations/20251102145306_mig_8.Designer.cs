@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WriteReview.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using WriteReview.Persistence.Contexts;
 namespace WriteReview.Persistence.Migrations
 {
     [DbContext(typeof(WriteReviewDbContext))]
-    partial class WriteReviewDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251102145306_mig_8")]
+    partial class mig_8
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -263,6 +266,10 @@ namespace WriteReview.Persistence.Migrations
 
             modelBuilder.Entity("WriteReview.Domain.Entities.ArticleExpertAssignment", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("ArticleId")
                         .HasColumnType("uniqueidentifier");
 
@@ -281,7 +288,9 @@ namespace WriteReview.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.HasKey("ArticleId", "ExpertId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArticleId");
 
                     b.HasIndex("ExpertId");
 
@@ -473,15 +482,15 @@ namespace WriteReview.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("WriteReview.Domain.Entities.AppUser", "User")
+                    b.HasOne("WriteReview.Domain.Entities.AppUser", "AppUser")
                         .WithMany("ExpertiseAreas")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ExpertiseArea");
+                    b.Navigation("AppUser");
 
-                    b.Navigation("User");
+                    b.Navigation("ExpertiseArea");
                 });
 
             modelBuilder.Entity("WriteReview.Domain.Entities.AppUser", b =>

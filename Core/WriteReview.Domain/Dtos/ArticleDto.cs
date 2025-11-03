@@ -6,7 +6,10 @@ using System.Threading.Tasks;
 
 namespace WriteReview.Domain.Dtos
 {
-    internal class ArticleDto
+    /// <summary>
+    /// Bu sınıf, bir makalenin temel bilgilerini taşımak için kullanılır. Makale kimliği, başlığı, durumu ve son güncellenme tarihini içerir.
+    /// </summary>
+    public class ArticleDto
     {
         public Guid Id { get; init; }
         public string Title { get; init; } = "";

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WriteReview.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using WriteReview.Persistence.Contexts;
 namespace WriteReview.Persistence.Migrations
 {
     [DbContext(typeof(WriteReviewDbContext))]
-    partial class WriteReviewDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251031104645_mig_5")]
+    partial class mig_5
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -263,6 +266,10 @@ namespace WriteReview.Persistence.Migrations
 
             modelBuilder.Entity("WriteReview.Domain.Entities.ArticleExpertAssignment", b =>
                 {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<Guid>("ArticleId")
                         .HasColumnType("uniqueidentifier");
 
@@ -281,7 +288,9 @@ namespace WriteReview.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
-                    b.HasKey("ArticleId", "ExpertId");
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArticleId");
 
                     b.HasIndex("ExpertId");
 
@@ -327,42 +336,6 @@ namespace WriteReview.Persistence.Migrations
                     b.HasIndex("ReviewerId");
 
                     b.ToTable("ArticleReviews");
-                });
-
-            modelBuilder.Entity("WriteReview.Domain.Entities.ExpertiseArea", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ExpertiseAreas");
-                });
-
-            modelBuilder.Entity("WriteReview.Domain.Entities.UserExpertiseArea", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ExpertiseAreaId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("UserId", "ExpertiseAreaId");
-
-                    b.HasIndex("ExpertiseAreaId");
-
-                    b.ToTable("UserExpertiseArea");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -465,30 +438,9 @@ namespace WriteReview.Persistence.Migrations
                     b.Navigation("Reviewer");
                 });
 
-            modelBuilder.Entity("WriteReview.Domain.Entities.UserExpertiseArea", b =>
-                {
-                    b.HasOne("WriteReview.Domain.Entities.ExpertiseArea", "ExpertiseArea")
-                        .WithMany("Users")
-                        .HasForeignKey("ExpertiseAreaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("WriteReview.Domain.Entities.AppUser", "User")
-                        .WithMany("ExpertiseAreas")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ExpertiseArea");
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("WriteReview.Domain.Entities.AppUser", b =>
                 {
                     b.Navigation("Articles");
-
-                    b.Navigation("ExpertiseAreas");
                 });
 
             modelBuilder.Entity("WriteReview.Domain.Entities.Article", b =>
@@ -496,11 +448,6 @@ namespace WriteReview.Persistence.Migrations
                     b.Navigation("ExpertAssignments");
 
                     b.Navigation("Reviews");
-                });
-
-            modelBuilder.Entity("WriteReview.Domain.Entities.ExpertiseArea", b =>
-                {
-                    b.Navigation("Users");
                 });
 #pragma warning restore 612, 618
         }

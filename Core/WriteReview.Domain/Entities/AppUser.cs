@@ -10,7 +10,8 @@ namespace WriteReview.Domain.Entities
 {
     public class AppUser : IdentityUser<Guid>
     {
-        public string FullName { get; set; }
-        public ICollection<Article> Articles { get; set; }
+        public string FullName { get; set; } = default!;
+        public ICollection<Article>? Articles { get; set; }
+        public ICollection<UserExpertiseArea> ExpertiseAreas { get; set; } = new List<UserExpertiseArea>();
     }
 }

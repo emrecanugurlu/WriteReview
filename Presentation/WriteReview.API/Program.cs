@@ -8,10 +8,12 @@ using System.Security.Claims;
 using System.Text;
 using WriteReview.Application.Security;
 using WriteReview.Domain.Entities;
-using WriteReview.Persistence.Articles;
 using WriteReview.Persistence.Contexts;
 using WriteReview.Persistence.Security;
 using WriteReview.Persistence.Seed;
+using WriteReview.Persistence.Services.Articles;
+using WriteReview.Persistence.Services.Expert;
+using WriteReview.Persistence.Services.ExpertiseArea;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -70,6 +72,9 @@ builder.Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IActorContextAccessor, ActorContextAccessor>();
 builder.Services.AddScoped<ArticleStateService>();
+builder.Services.AddScoped<ArticleService>();
+builder.Services.AddScoped<ExpertiseAreaService>();
+builder.Services.AddScoped<ExpertService>();
 
 
 var app = builder.Build();
