@@ -19,3 +19,8 @@ namespace WriteReview.Domain.Entities
         public ExpertAssignmentStatus Status{ get; set; } = ExpertAssignmentStatus.Pending;
     }
 }
+
+
+
+
+

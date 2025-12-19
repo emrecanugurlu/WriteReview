@@ -15,7 +15,8 @@ namespace WriteReview.Persistence.Services.Articles
     public class ArticleService
     {
 
-        public void CreateArticle(CreateArticleDto createDraftDto, IActorContextAccessor actor, WriteReviewDbContext writeReviewDbContext, bool isSubmit, ArticleStateService articleStateService)
+        public void CreateArticle(CreateArticleDto createDraftDto, IActorContextAccessor actor, 
+            WriteReviewDbContext writeReviewDbContext, bool isSubmit, ArticleStateService articleStateService)
         {
             var me = actor.GetCurrent().UserId;
 
@@ -26,7 +27,7 @@ namespace WriteReview.Persistence.Services.Articles
                 Summary = createDraftDto.Summary.Trim(),
                 ContentPath = createDraftDto.Content,
                 Status = ArticleStatus.Draft,
-                AuthorId = actor.GetCurrent().UserId,
+                AuthorId = me,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -40,6 +41,7 @@ namespace WriteReview.Persistence.Services.Articles
             writeReviewDbContext.SaveChanges();
 
         }
+
 
         public ArticleDto GetArticleById(string articleId, WriteReviewDbContext writeReviewDbContext)
         {
@@ -59,6 +61,19 @@ namespace WriteReview.Persistence.Services.Articles
             };
 
             return articleDto;
+
+        }
+
+        public Article GetArticleByIdFullData(string articleId, WriteReviewDbContext writeReviewDbContext)
+        {
+            var article = writeReviewDbContext.Articles.Find(Guid.Parse(articleId));
+
+            if (article == null)
+            {
+                throw new Exception("Article not found or access denied.");
+            }
+
+            return article;
 
         }
 

@@ -15,3 +15,15 @@ namespace WriteReview.Domain.Entities
         public ICollection<UserExpertiseArea> ExpertiseAreas { get; set; } = new List<UserExpertiseArea>();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+

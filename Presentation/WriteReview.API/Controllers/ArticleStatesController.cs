@@ -12,13 +12,13 @@ namespace WriteReview.API.Controllers
 {
     [Route("api/staff/articles")]
     [ApiController]
-    public class StaffArticlesController : ControllerBase
+    public class ArticleStatesController : ControllerBase
     {
 
         private readonly WriteReviewDbContext _db;
         private readonly ArticleStateService _state;
 
-        public StaffArticlesController(WriteReviewDbContext db, ArticleStateService state)
+        public ArticleStatesController(WriteReviewDbContext db, ArticleStateService state)
         {
             _db = db;
             _state = state;
@@ -66,7 +66,7 @@ namespace WriteReview.API.Controllers
         }
 
         [HttpPost("{id:guid}/reject")]
-        public async Task<IActionResult> Reject(Guid id, RejectionDto dto)
+        public async Task<IActionResult> Reject(Guid id, [FromBody] RejectionDto dto)
         {
             var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == id);
             if (article is null) return NotFound();

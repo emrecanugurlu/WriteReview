@@ -12,13 +12,13 @@ namespace WriteReview.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class StaffsController : ControllerBase
+    public class ManagersController : ControllerBase
     {
         private readonly WriteReviewDbContext _db;
-        public StaffsController(WriteReviewDbContext db) => _db = db;
+        public ManagersController(WriteReviewDbContext db) => _db = db;
 
         [HttpGet("articles")]
-        public async Task<IActionResult> ListArticle(
+        public async Task<IActionResult> ListArticleForManager(
             [FromQuery] ArticleStatus? status = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
@@ -35,21 +35,30 @@ namespace WriteReview.API.Controllers
 
             var total = await q.CountAsync();
             var items = await q
+                .Include(a => a.Author)
+                .Include(a => a.Category)
+                .Include(a => a.ExpertAssignments)
                 .OrderBy(a => a.Status)
                 .ThenByDescending(a => a.UpdatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(a => new StaffArticleListItemDto
+                .Select(a => new ManagerArticleListItemDto
                 {
                     Id = a.Id,
                     Title = a.Title,
                     AuthorId = a.AuthorId,
+                    AuthorName = a.Author.FullName,
                     Status = (int)a.Status,
+                    Experts = a.ExpertAssignments
+                        .Select(ea => ea.Expert.FullName)
+                        .ToList(),
+                    Category = a.Category.Name,
+                    CreatedAt = a.CreatedAt,
                     UpdatedAt = a.UpdatedAt
                 })
                 .ToListAsync();
 
-            return Ok(new PagedResult<StaffArticleListItemDto>
+            return Ok(new PagedResult<ManagerArticleListItemDto>
             {
                 Page = page,
                 PageSize = pageSize,

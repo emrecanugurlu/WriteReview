@@ -12,7 +12,6 @@ namespace WriteReview.Domain.Entities
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public Guid UserId { get; set; }
         public AppUser User { get; set; } = new AppUser();
-
         public Guid ExpertiseAreaId { get; set; }
         public ExpertiseArea ExpertiseArea { get; set; } = new ExpertiseArea();
     }

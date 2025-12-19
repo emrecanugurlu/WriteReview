@@ -15,6 +15,7 @@ namespace WriteReview.Persistence.Contexts
         public DbSet<ArticleReview> ArticleReviews { get; set; }
         public DbSet<ArticleExpertAssignment> ArticleExpertAssignments { get; set; }
         public DbSet<ExpertiseArea> ExpertiseAreas { get; set; }
+        public DbSet<Category> Categories { get; set; }
         public WriteReviewDbContext(DbContextOptions options) : base(options)
         {
         }
@@ -89,8 +90,18 @@ namespace WriteReview.Persistence.Contexts
 
             });
 
-            
-                
+            builder.Entity<Category>(b =>
+            {
+                b.HasKey(c => c.Id);
+                b.Property(c => c.Name).IsRequired().HasMaxLength(100);
+
+                b.HasMany(c => c.Articles)
+                 .WithOne(a => a.Category)
+                 .HasForeignKey(a => a.CategoryId);
+            });
+
+
+
 
             base.OnModelCreating(builder);
         }
