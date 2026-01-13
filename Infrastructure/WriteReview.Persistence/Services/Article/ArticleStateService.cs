@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using WriteReview.Application.Security;
+using WriteReview.Application.Services;
 using WriteReview.Domain.Dtos;
 using WriteReview.Domain.Entities;
 using WriteReview.Domain.Entities.EnumClass;
@@ -12,7 +13,7 @@ using WriteReview.Persistence.Contexts;
 
 namespace WriteReview.Persistence.Services.Articles
 {
-    public class ArticleStateService
+    public class ArticleStateService : IArticleStateService
     {
         private readonly IActorContextAccessor _actor;
         private readonly WriteReviewDbContext _writeReviewDbContext;
@@ -53,15 +54,12 @@ namespace WriteReview.Persistence.Services.Articles
             if (!HasAnyRole(actor, "Author")) throw new UnauthorizedAccessException("Sadece Author gönderebilir.");
             if (article.AuthorId != actor.UserId) throw new UnauthorizedAccessException("Sadece sahibi gönderebilir.");
 
-            /*
             if (string.IsNullOrWhiteSpace(article.Title) || string.IsNullOrWhiteSpace(article.ContentPath))
-                throw new ArgumentException("Başlık ve içerik zorunludur.");*/
+                throw new ArgumentException("Başlık ve içerik zorunludur.");
 
             var from = article.Status;
             article.Status = ArticleStatus.Submitted;
             article.UpdatedAt = DateTime.UtcNow;
-
-            // Author aksiyonu da log’lanabilir (istersen)
             AddReview(article, ReviewAction.TakeToReview, actor.UserId, from, ArticleStatus.Submitted, note: "Author submitted");
         }
 
@@ -101,8 +99,6 @@ namespace WriteReview.Persistence.Services.Articles
         {
             var actor = _actor.GetCurrent();
             if (article is null) throw new ArgumentNullException(nameof(article));
-            if (article.Status != ArticleStatus.InReview)
-                throw new InvalidOperationException("Sadece InReview durumundaki makaleler reddedilebilir.");
             if (!HasAnyRole(actor, "Admin", "Editor", "Manager"))
                 throw new UnauthorizedAccessException("Bu işlem için staff rolü gerekir.");
             if (string.IsNullOrWhiteSpace(dto.Reason))

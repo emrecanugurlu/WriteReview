@@ -8,8 +8,10 @@ namespace WriteReview.Domain.Dtos
 {
     public class CreateArticleDto
     {
-        public  string? Title { get; set; }
-        public  string? Summary { get; set; }
-        public  string? Content { get; set; }  
+        public string Title { get; set; } = default!;
+        public  string Summary { get; set; } = default!;
+        public  string Content { get; set; } = default!;
+        public string CategoryId { get; set; } = default!;
+        public string Tags { get; set; } = default!;
     }
 }

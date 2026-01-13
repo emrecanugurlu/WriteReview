@@ -3,15 +3,19 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Identity.Client;
 using System.Numerics;
 using System.Security.Claims;
+using WriteReview.Application.Repositories.Article;
 using WriteReview.Application.Security;
 using WriteReview.Domain.Dtos;
 using WriteReview.Domain.Dtos.RequestDto;
+using WriteReview.Domain.Dtos.ResponseDto;
 using WriteReview.Domain.Entities;
 using WriteReview.Domain.Entities.EnumClass;
 using WriteReview.Domain.Security;
 using WriteReview.Persistence.Contexts;
+using WriteReview.Persistence.Repositories.Article;
 using WriteReview.Persistence.Services.Articles;
 
 namespace WriteReview.API.Controllers
@@ -23,14 +27,18 @@ namespace WriteReview.API.Controllers
         private readonly WriteReviewDbContext _db;
         private readonly IActorContextAccessor _actor;
         private readonly ArticleService _articleService;
-        private readonly ArticleStateService _state;
+        private readonly ArticleStateService _articleStateService;
+        private readonly IArticleWriteRepository _articleWriteRepository;
+        private readonly IArticleReadRepository _articleReadRepository;
 
-        public ArticlesController(WriteReviewDbContext db, IActorContextAccessor actor, ArticleService articleService, ArticleStateService articleStateService)
+        public ArticlesController(WriteReviewDbContext db, IActorContextAccessor actor, ArticleService articleService, ArticleStateService articleStateService, IArticleWriteRepository articleWriteRepository, IArticleReadRepository articleReadRepository)
         {
             _db = db;
             _actor = actor;
             _articleService = articleService;
-            _state = articleStateService;
+            _articleStateService = articleStateService;
+            _articleWriteRepository = articleWriteRepository;
+            _articleReadRepository = articleReadRepository;
         }
 
         [Authorize(Roles = Roles.Author)]
@@ -56,6 +64,7 @@ namespace WriteReview.API.Controllers
 
             var items = await q
                 .OrderByDescending(a => a.UpdatedAt)
+                .Include(a => a.Category)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(a => new ArticleListItemDto
@@ -63,7 +72,10 @@ namespace WriteReview.API.Controllers
                     Id = a.Id,
                     Title = a.Title,
                     Status = (int)a.Status,
-                    UpdatedAt = a.UpdatedAt
+                    UpdatedAt = a.UpdatedAt,
+                    Category = a.Category.Name,
+                    Tags = a.Tags,
+                    Summary = a.Summary
                 })
                 .ToListAsync();
 
@@ -77,31 +89,56 @@ namespace WriteReview.API.Controllers
 
         }
 
+
         [Authorize(Roles = Roles.Author)]
         [HttpPost]
-        public IActionResult CreateArticle([FromBody] CreateArticleRequest createArticleRequest)
+        public async Task<IActionResult> CreateArticle(
+            [FromBody] CreateArticleRequest createArticleRequest
+            )
         {
             var createArticleDto = createArticleRequest.ArticleDto;
             var isSubmit = createArticleRequest.IsSubmit;
-            _articleService.CreateArticle(createArticleDto, _actor, _db, isSubmit, _state);
-            return Ok();
+            var addArticleMessage = await _articleWriteRepository.AddArticleWithAuthor(
+                _actor, 
+                createArticleDto, 
+                isSubmit, 
+                _articleStateService);
+            return Ok(new AddArticleResponse { Message = addArticleMessage });
+
         }
 
- 
 
-        [Authorize(Roles = "Admin,Editor,Manager,Author")]
+
+        [Authorize(Roles = "Admin,Editor,Manager,Author,Expert")]
         [HttpGet("{articleId}")]
-        public IActionResult GetArticleWithId(string articleId)
+        public async Task<IActionResult> GetArticleWithId(string articleId)
         {
-            var article = _articleService.GetArticleById(articleId, _db);
-            article = new ArticleDto
-            {
-                Id = article.Id,
-                Status = article.Status,
-                Title = article.Title,
-                UpdatedAt = article.UpdatedAt
-            };
-            return Ok(article);
+            var articleDto = await _articleReadRepository.GetArticleWithCategoryAndAuthor(articleId);
+
+            return Ok(articleDto);
+        }
+
+        /// <summary>
+        /// Belirtilen id değerinde sahip uzmanın belirtilen id değerine sahip makaleye yaptığı değerlendirmeyi getirir.
+        /// </summary>
+        /// <param name="articleId"></param>
+        /// <param name="expertId"></param>
+        /// <returns></returns>
+        [HttpGet("{articleId}/review")]
+        public async Task<IActionResult> GetArticleExpertReview(string articleId,[FromBody] string expertId)
+        {
+            var article = await _db.Articles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == Guid.Parse(articleId));
+
+            if (article is null)
+                return NotFound();
+
+            var review = _db.Articles.Include(a => a.ExpertAssignments)
+                .Where(a=> a.AuthorId == Guid.Parse(expertId))
+                .Select(a => a.ExpertAssignments);
+
+            return Ok( review);
         }
 
 
@@ -122,7 +159,8 @@ namespace WriteReview.API.Controllers
                 .AsNoTracking()
                 .Where(r => r.ArticleId == id)
                 .OrderByDescending(r => r.CreatedAt)
-                .Select(r => new {
+                .Select(r => new
+                {
                     type = "staff",
                     action = r.Action,
                     note = r.Note,
@@ -140,10 +178,11 @@ namespace WriteReview.API.Controllers
                 .Where(x => x.ArticleId == id)
                 .OrderBy(x => x.Status)
                 .ThenByDescending(x => x.ReviewedAt)
-                .Select(x => new {
+                .Select(x => new
+                {
                     type = "expert",
                     expertId = x.ExpertId,
-                    expertEmail = x.Expert.Email,     
+                    expertEmail = x.Expert.Email,
                     feedback = x.Feedback,
                     score = x.Score,
                     status = x.Status,
@@ -157,6 +196,10 @@ namespace WriteReview.API.Controllers
                 staff = staffReviews,
                 experts = expertReviews
             });
+
+
+            
+            
 
 
 

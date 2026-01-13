@@ -9,11 +9,10 @@ namespace WriteReview.Domain.Dtos
     public sealed class ExpertAssignmentDto
     {
         public Guid ArticleId { get; set; }
-        public string ArticleTitle { get; set; } = "";
-        public int ArticleStatus { get; set; }
+        public string ArticleTitle { get; set; } = string.Empty;
+        public string AuthorName { get; set; } = string.Empty;
+        public string ArticleCategory { get; set; } = string.Empty;
         public int Status { get; set; }             
-        public string? Feedback { get; set; }
-        public int? Score { get; set; }
         public DateTime? ReviewedAt { get; set; }
     }
 }

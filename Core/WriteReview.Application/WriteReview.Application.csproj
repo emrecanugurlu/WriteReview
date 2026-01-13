@@ -7,7 +7,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\WriteReview.Domain\WriteReview.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Repositories\UserExpertiseArea\" />
   </ItemGroup>
 
 </Project>

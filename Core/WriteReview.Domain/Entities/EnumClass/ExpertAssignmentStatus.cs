@@ -11,6 +11,6 @@ namespace WriteReview.Domain.Entities.EnumClass
         Pending = 0,
         Accepted = 1,
         Rejected = 2,
-        Completed = 3
+        Revision = 3
     }
 }

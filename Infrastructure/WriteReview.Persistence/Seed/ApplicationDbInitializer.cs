@@ -89,6 +89,37 @@ namespace WriteReview.Persistence.Seed
             }
         }
 
+        public static async Task SeedManagerAsync(UserManager<AppUser> userManager)
+        {
+            if (userManager == null) throw new ArgumentNullException(nameof(userManager));
+
+            const string managerEmail = "manager@writereview.com";
+            const string managerPassword = "Manager123*";
+
+            var manager = await userManager.FindByEmailAsync(managerEmail);
+
+            if (manager == null)
+            {
+                manager = new AppUser
+                {
+                    UserName = managerEmail,
+                    Email = managerEmail,
+                    FullName = "System Manager",
+                    EmailConfirmed = true,
+                };
+
+                var result = await userManager.CreateAsync(manager, managerPassword);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(manager, "Manager");
+                }
+                else
+                {
+                    throw new Exception($"Manager kullanıcı oluşturulamadı: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                }
+            }
+        }
+
         public static async Task SeedExpertAsync(UserManager<AppUser> userManager)
         {
             if (userManager == null) throw new ArgumentNullException(nameof(userManager));
@@ -120,11 +151,44 @@ namespace WriteReview.Persistence.Seed
             }
         }
 
+        public static async Task SeedExpert2Async(UserManager<AppUser> userManager)
+        {
+            if (userManager == null) throw new ArgumentNullException(nameof(userManager));
+
+            const string expertEmail = "expert2@writereview.com";
+            const string expertPassword = "Expert2123*";
+
+            var expert = await userManager.FindByEmailAsync(expertEmail);
+
+            if (expert == null)
+            {
+                expert = new AppUser
+                {
+                    UserName = expertEmail,
+                    Email = expertEmail,
+                    FullName = "System Expert 2",
+                    EmailConfirmed = true,
+                };
+
+                var result = await userManager.CreateAsync(expert, expertPassword);
+                if (result.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(expert, "Expert");
+                }
+                else
+                {
+                    throw new Exception($"Expert kullanıcı oluşturulamadı: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                }
+            }
+        }
+
         public static async Task SeedAsync(RoleManager<AppRole> roleManager, UserManager<AppUser> userManager)
         {
             await SeedRolesAsync(roleManager);
             await SeedAdminAsync(userManager);
+            await SeedManagerAsync(userManager);
             await SeedExpertAsync(userManager);
+            await SeedExpert2Async(userManager);
             await SeedAuthorAsync(userManager);
         }
     }

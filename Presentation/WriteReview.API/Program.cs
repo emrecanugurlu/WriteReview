@@ -6,9 +6,18 @@ using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Security.Claims;
 using System.Text;
+using WriteReview.Application.Repositories.AppUser;
+using WriteReview.Application.Repositories.Article;
+using WriteReview.Application.Repositories.ArticleExpertAssignment;
+using WriteReview.Application.Repositories.ExpertiseArea;
 using WriteReview.Application.Security;
+using WriteReview.Application.Services;
 using WriteReview.Domain.Entities;
 using WriteReview.Persistence.Contexts;
+using WriteReview.Persistence.Repositories.AppUser;
+using WriteReview.Persistence.Repositories.Article;
+using WriteReview.Persistence.Repositories.ArticleExpertAssignment;
+using WriteReview.Persistence.Repositories.ExpertiseArea;
 using WriteReview.Persistence.Security;
 using WriteReview.Persistence.Seed;
 using WriteReview.Persistence.Services.Articles;
@@ -17,13 +26,11 @@ using WriteReview.Persistence.Services.ExpertiseArea;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 
 builder.Services.AddControllers();
 builder.Services.AddDbContext<WriteReviewDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("WriteReviewDatabase")));
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
 builder.Services.AddOpenApi();
 builder.Services.AddIdentity<AppUser, AppRole>(options =>
 {
@@ -69,12 +76,24 @@ builder.Services
         };
     });
 
+
+
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IActorContextAccessor, ActorContextAccessor>();
+builder.Services.AddScoped<IArticleWriteRepository, ArticleWriteRepository>();
+builder.Services.AddScoped<IArticleReadRepository, ArticleReadRepository>();
+builder.Services.AddScoped<IExpertiseAreaWriteRepository, ExpertiseAreaWriteRepository>();
+builder.Services.AddScoped<IExpertiseAreaReadRepository, ExpertiseAreaReadRepository>();
+builder.Services.AddScoped<IAppUserReadRepository, AppUserReadRepository>();
+builder.Services.AddScoped<IArticleStateService, ArticleStateService>();
+builder.Services.AddScoped<IArticleExpertAssignmentWriteRepository, ArticleExpertAssignmentWriteRepository>();
+builder.Services.AddScoped<IArticleExpertAssignmentReadRepository, ArticleExpertAssignmentReadRepository>();
 builder.Services.AddScoped<ArticleStateService>();
 builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<ExpertiseAreaService>();
 builder.Services.AddScoped<ExpertService>();
+
 
 
 var app = builder.Build();
@@ -99,7 +118,7 @@ app.MapGet("/api/debug/whoami",
         return Results.Ok(new { isAuth, claims });
     });
 
-// Configure the HTTP request pipeline.
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

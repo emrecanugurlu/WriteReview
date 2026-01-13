@@ -232,6 +232,9 @@ namespace WriteReview.Persistence.Migrations
                     b.Property<Guid>("AuthorId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<string>("ContentPath")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -246,6 +249,10 @@ namespace WriteReview.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.PrimitiveCollection<string>("Tags")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -257,6 +264,8 @@ namespace WriteReview.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AuthorId");
+
+                    b.HasIndex("CategoryId");
 
                     b.ToTable("Articles");
                 });
@@ -327,6 +336,22 @@ namespace WriteReview.Persistence.Migrations
                     b.HasIndex("ReviewerId");
 
                     b.ToTable("ArticleReviews");
+                });
+
+            modelBuilder.Entity("WriteReview.Domain.Entities.Category", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Categories");
                 });
 
             modelBuilder.Entity("WriteReview.Domain.Entities.ExpertiseArea", b =>
@@ -424,7 +449,15 @@ namespace WriteReview.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("WriteReview.Domain.Entities.Category", "Category")
+                        .WithMany("Articles")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Author");
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("WriteReview.Domain.Entities.ArticleExpertAssignment", b =>
@@ -496,6 +529,11 @@ namespace WriteReview.Persistence.Migrations
                     b.Navigation("ExpertAssignments");
 
                     b.Navigation("Reviews");
+                });
+
+            modelBuilder.Entity("WriteReview.Domain.Entities.Category", b =>
+                {
+                    b.Navigation("Articles");
                 });
 
             modelBuilder.Entity("WriteReview.Domain.Entities.ExpertiseArea", b =>

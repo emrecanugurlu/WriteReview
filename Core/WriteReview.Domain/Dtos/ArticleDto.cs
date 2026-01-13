@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using WriteReview.Domain.Entities;
 
 namespace WriteReview.Domain.Dtos
 {
@@ -13,6 +14,10 @@ namespace WriteReview.Domain.Dtos
     {
         public Guid Id { get; init; }
         public string Title { get; init; } = "";
+        public string Summary { get; init; } = default!;
+        public string Content { get; set; } = default!;
+        public string AuthorName { get; set; }
+        public string Category { get; set; }
         public int Status { get; init; }
         public DateTime UpdatedAt { get; init; }
     }
