@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,8 +14,11 @@ namespace WriteReview.Persistence.Repositories.ArticleExpertAssignment
 {
     public class ArticleExpertAssignmentWriteRepository : WriteRepository<Domain.Entities.ArticleExpertAssignment>, IArticleExpertAssignmentWriteRepository
     {
+        private readonly WriteReviewDbContext _context;
+
         public ArticleExpertAssignmentWriteRepository(WriteReviewDbContext context) : base(context)
         {
+            _context = context;
         }
 
         public async Task<Result<string>> AddArticleExpertsAssignment(AddArticleExpertsRequestDto dto)
@@ -55,6 +58,17 @@ namespace WriteReview.Persistence.Repositories.ArticleExpertAssignment
                     catch (Exception ex)
                     {
                         errors.Add($"Expert {expertId}: {ex.Message}");
+                    }
+                }
+
+                var article = await _context.Articles.FirstOrDefaultAsync(x => x.Id == articleId);
+                if (article != null)
+                {
+                    var totalExperts = await Table.CountAsync(x => x.ArticleId == articleId);
+                    if (totalExperts >= 3 && article.Status == WriteReview.Domain.Entities.EnumClass.ArticleStatus.Submitted)
+                    {
+                        article.Status = WriteReview.Domain.Entities.EnumClass.ArticleStatus.InReview;
+                        await SaveChangesAsync();
                     }
                 }
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -182,6 +182,43 @@ namespace WriteReview.Persistence.Seed
             }
         }
 
+        public static async Task SeedAdditionalExpertsAsync(UserManager<AppUser> userManager)
+        {
+            if (userManager == null) throw new ArgumentNullException(nameof(userManager));
+
+            var additionalExperts = new[]
+            {
+                new { Email = "expert3@writereview.com", Name = "System Expert 3", Password = "Expert3123*" },
+                new { Email = "expert4@writereview.com", Name = "System Expert 4", Password = "Expert4123*" },
+                new { Email = "expert5@writereview.com", Name = "System Expert 5", Password = "Expert5123*" }
+            };
+
+            foreach (var exp in additionalExperts)
+            {
+                var expert = await userManager.FindByEmailAsync(exp.Email);
+                if (expert == null)
+                {
+                    expert = new AppUser
+                    {
+                        UserName = exp.Email,
+                        Email = exp.Email,
+                        FullName = exp.Name,
+                        EmailConfirmed = true,
+                    };
+
+                    var result = await userManager.CreateAsync(expert, exp.Password);
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(expert, "Expert");
+                    }
+                    else
+                    {
+                        throw new Exception($"Expert kullanıcı oluşturulamadı: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+                    }
+                }
+            }
+        }
+
         public static async Task SeedAsync(RoleManager<AppRole> roleManager, UserManager<AppUser> userManager)
         {
             await SeedRolesAsync(roleManager);
@@ -189,6 +226,7 @@ namespace WriteReview.Persistence.Seed
             await SeedManagerAsync(userManager);
             await SeedExpertAsync(userManager);
             await SeedExpert2Async(userManager);
+            await SeedAdditionalExpertsAsync(userManager);
             await SeedAuthorAsync(userManager);
         }
     }

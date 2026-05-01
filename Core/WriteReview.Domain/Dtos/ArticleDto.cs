@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,5 +20,12 @@ namespace WriteReview.Domain.Dtos
         public string Category { get; set; }
         public int Status { get; init; }
         public DateTime UpdatedAt { get; init; }
+        public List<ArticleExpertSummaryDto> Experts { get; set; } = new();
+    }
+
+    public class ArticleExpertSummaryDto
+    {
+        public string ExpertName { get; set; } = string.Empty;
+        public int Status { get; set; }
     }
 }

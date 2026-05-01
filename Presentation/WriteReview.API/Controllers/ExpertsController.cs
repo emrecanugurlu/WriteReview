@@ -1,4 +1,4 @@
-﻿
+
 using Azure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -153,18 +153,19 @@ namespace WriteReview.API.Controllers
 
             assignment.Feedback = dto.Feedback;
             assignment.Score = dto.Score;
-            assignment.Status = ExpertAssignmentStatus.Revision;
+            assignment.Status = dto.Status;
             assignment.ReviewedAt = DateTime.UtcNow;
 
 
             var allDone = await _db.ArticleExpertAssignments
                 .Where(x => x.ArticleId == assignment.ArticleId)
-                .AllAsync(x => x.Status == ExpertAssignmentStatus.Revision);
+                .AllAsync(x => x.Status != ExpertAssignmentStatus.Pending);
 
 
             if (allDone)
             {
                 assignment.Article.UpdatedAt = DateTime.UtcNow;
+                // You could optionally change the article status here if desired.
             }
 
             await _db.SaveChangesAsync();

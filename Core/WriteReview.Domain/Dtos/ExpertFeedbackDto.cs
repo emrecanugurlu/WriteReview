@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,5 +10,6 @@ namespace WriteReview.Domain.Dtos
     {
         public string? Feedback { get; set; }
         public int? Score { get; set; }
+        public WriteReview.Domain.Entities.EnumClass.ExpertAssignmentStatus Status { get; set; }
     }
 }

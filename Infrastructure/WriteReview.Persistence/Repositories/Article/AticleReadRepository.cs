@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,8 +18,12 @@ namespace WriteReview.Persistence.Repositories.Article
 
         async public Task<ArticleDto> GetArticleWithCategoryAndAuthor(string articleId)
         {
-            var article = await Table.Include(a => a.Category).Include(a => a.Author).FirstOrDefaultAsync(a => a.Id.ToString() == articleId);
-
+            var article = await Table
+                .Include(a => a.Category)
+                .Include(a => a.Author)
+                .Include(a => a.ExpertAssignments)
+                    .ThenInclude(ea => ea.Expert)
+                .FirstOrDefaultAsync(a => a.Id.ToString() == articleId);
 
             var articleDto = new Domain.Dtos.ArticleDto
             {
@@ -30,7 +34,12 @@ namespace WriteReview.Persistence.Repositories.Article
                 Category = article.Category.Name,
                 AuthorName = article.Author.FullName,
                 Id = article.Id,
-                UpdatedAt = article.UpdatedAt
+                UpdatedAt = article.UpdatedAt,
+                Experts = article.ExpertAssignments?.Select(ea => new ArticleExpertSummaryDto
+                {
+                    ExpertName = ea.Expert?.FullName ?? "",
+                    Status = (int)ea.Status
+                }).ToList() ?? new List<ArticleExpertSummaryDto>()
             };
 
             return articleDto;

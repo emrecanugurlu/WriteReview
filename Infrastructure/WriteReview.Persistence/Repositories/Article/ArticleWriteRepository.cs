@@ -36,7 +36,7 @@ namespace WriteReview.Persistence.Repositories.Article
                 Summary = createArticleDto.Summary.Trim(),
                 ContentPath = createArticleDto.Content,
                 Status = ArticleStatus.Draft,
-                CategoryId = Guid.Parse(createArticleDto.CategoryId),
+                CategoryId = Guid.Parse("48e3cf91-ca10-4c78-b0fe-aa17d87d2e3b"),
                 Tags = createArticleDto.Tags.Split(',').Select(t => t.Trim()).ToArray(),
                 AuthorId = me,
                 CreatedAt = DateTime.UtcNow,
