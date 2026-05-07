@@ -38,7 +38,8 @@ namespace WriteReview.Persistence.Repositories.Article
                 Experts = article.ExpertAssignments?.Select(ea => new ArticleExpertSummaryDto
                 {
                     ExpertName = ea.Expert?.FullName ?? "",
-                    Status = (int)ea.Status
+                    Status = (int)ea.Status,
+                    Feedback = ea.Feedback
                 }).ToList() ?? new List<ArticleExpertSummaryDto>()
             };
 

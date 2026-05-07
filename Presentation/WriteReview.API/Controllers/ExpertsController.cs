@@ -146,10 +146,13 @@ namespace WriteReview.API.Controllers
 
             var assignment = await _db.ArticleExpertAssignments
                 .Include(x => x.Article)
-                .FirstOrDefaultAsync(x => x.ExpertId == me);
+                .FirstOrDefaultAsync(x => x.ExpertId == me && x.ArticleId == Guid.Parse(articleId));
 
             if (assignment is null)
                 return NotFound();
+
+            if (assignment.Status != ExpertAssignmentStatus.Pending)
+                return BadRequest("Bu makale için zaten bir değerlendirme yapılmış.");
 
             assignment.Feedback = dto.Feedback;
             assignment.Score = dto.Score;

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -229,6 +229,56 @@ namespace WriteReview.API.Controllers
             //    .ToListAsync();
 
             //return Ok(list);
+        }
+
+        [Authorize(Roles = "Admin,Manager")]
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll(
+            [FromQuery] ArticleStatus? status = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            if (page < 1) page = 1;
+            if (pageSize is < 1 or > 50) pageSize = 10;
+
+            var q = _db.Articles.AsNoTracking();
+
+            if (status.HasValue)
+                q = q.Where(a => a.Status == status.Value);
+            else
+                q = q.Where(a => a.Status != ArticleStatus.Draft);
+
+            var total = await q.CountAsync();
+            var items = await q
+                .Include(a => a.Author)
+                .Include(a => a.Category)
+                .Include(a => a.ExpertAssignments)
+                .OrderByDescending(a => a.UpdatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(a => new WriteReview.Domain.Dtos.Staff.ManagerArticleListItemDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    AuthorId = a.AuthorId,
+                    AuthorName = a.Author.FullName,
+                    Status = (int)a.Status,
+                    Experts = a.ExpertAssignments
+                        .Select(ea => ea.Expert.FullName)
+                        .ToList(),
+                    Category = a.Category.Name,
+                    CreatedAt = a.CreatedAt,
+                    UpdatedAt = a.UpdatedAt
+                })
+                .ToListAsync();
+
+            return Ok(new PagedResult<WriteReview.Domain.Dtos.Staff.ManagerArticleListItemDto>
+            {
+                Page = page,
+                PageSize = pageSize,
+                Total = total,
+                Items = items
+            });
         }
     }
 }

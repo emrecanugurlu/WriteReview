@@ -27,5 +27,6 @@ namespace WriteReview.Domain.Dtos
     {
         public string ExpertName { get; set; } = string.Empty;
         public int Status { get; set; }
+        public string? Feedback { get; set; }
     }
 }
