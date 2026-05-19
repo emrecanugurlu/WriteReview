@@ -1,5 +1,6 @@
 
 using Azure;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +44,7 @@ namespace WriteReview.API.Controllers
             _expertService = expertService;
         }
 
+        [Authorize(Roles = "Expert")]
         [HttpGet("get-assigned-articles")]
         public async Task<IActionResult> GetMyAssignments(
             [FromQuery] int page = 1,
@@ -91,6 +93,7 @@ namespace WriteReview.API.Controllers
             });
         }
 
+        [Authorize(Roles = "Expert")]
         [HttpGet("get-assigned-article-detail")]
         public async Task<IActionResult> GetMyAssignment([FromQuery] string articleId)
         {
@@ -108,13 +111,15 @@ namespace WriteReview.API.Controllers
                 .Include(a => a.Article.Category)
                 .FirstOrDefaultAsync(a => a.ArticleId == Guid.Parse(articleId));
 
+            if (items is null)
+                return NotFound();
+
             return Ok(new AssignmentArticleDetailDto
             {
-                ArticleId = items!.ArticleId,
+                ArticleId = items.ArticleId,
                 ArticleCategory = items.Article.Category.Name,
-                ArticleContent=items.Article.ContentPath,
+                ArticleContent = items.Article.ContentPath,
                 ArticleTitle = items.Article.Title,
-                ArticleSummary = items.Article.Summary,
                 AuthorName = items.Article.Author.FullName,
                 Status = (int)items.Status,
                 Feedback = items.Feedback,
@@ -129,16 +134,20 @@ namespace WriteReview.API.Controllers
         /// </summary>
         /// <param name="dto"></param>
         /// <returns></returns>
+        [Authorize(Roles = "Admin,Manager")]
         [HttpPost]
         public async Task<IActionResult> AddAssignmentAsync([FromBody] AddArticleExpertsRequestDto dto)
         {
             var response = await _articleExpertAssignmentWriteRepository.AddArticleExpertsAssignment(dto);
-            return Ok(new { message = response });
+            if (!response.IsSuccess)
+                return BadRequest(new { message = response.ErrorMessage });
+            return Ok(new { message = response.Data });
         }
 
 
 
 
+        [Authorize(Roles = "Expert")]
         [HttpPost("assignments/{articleId}/feedback")]
         public async Task<IActionResult> SendFeedback(string articleId, [FromBody] ExpertFeedbackDto dto)
         {
@@ -181,6 +190,7 @@ namespace WriteReview.API.Controllers
             });
         }
 
+        [Authorize(Roles = "Admin,Manager")]
         [HttpGet()]
         public async Task<IActionResult> GetAllExperts()
         {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -24,7 +24,6 @@ namespace WriteReview.Persistence.Services.Articles
             {
                 Id = Guid.NewGuid(),
                 Title = createDraftDto.Title.Trim(),
-                Summary = createDraftDto.Summary.Trim(),
                 ContentPath = createDraftDto.Content,
                 Status = ArticleStatus.Draft,
                 AuthorId = me,

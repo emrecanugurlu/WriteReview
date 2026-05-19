@@ -1,10 +1,11 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using WriteReview.Domain.Entities;
+using WriteReview.Persistence.Contexts;
 
 namespace WriteReview.Persistence.Seed
 {
@@ -219,7 +220,30 @@ namespace WriteReview.Persistence.Seed
             }
         }
 
-        public static async Task SeedAsync(RoleManager<AppRole> roleManager, UserManager<AppUser> userManager)
+        public static async Task SeedCategoriesAsync(WriteReviewDbContext db)
+        {
+            var defaultCategories = new[]
+            {
+                new { Id = Guid.Parse("10000000-0000-0000-0000-000000000001"), Name = "Araştırma Makalesi" },
+                new { Id = Guid.Parse("10000000-0000-0000-0000-000000000002"), Name = "Derleme" },
+                new { Id = Guid.Parse("10000000-0000-0000-0000-000000000003"), Name = "Olgu Sunumu" },
+                new { Id = Guid.Parse("10000000-0000-0000-0000-000000000004"), Name = "Editöre Mektup" },
+                new { Id = Guid.Parse("10000000-0000-0000-0000-000000000005"), Name = "Teknik Rapor" },
+            };
+
+            foreach (var cat in defaultCategories)
+            {
+                var exists = await db.Categories.AnyAsync(c => c.Id == cat.Id);
+                if (!exists)
+                {
+                    db.Categories.Add(new Category { Id = cat.Id, Name = cat.Name });
+                }
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        public static async Task SeedAsync(RoleManager<AppRole> roleManager, UserManager<AppUser> userManager, WriteReviewDbContext db)
         {
             await SeedRolesAsync(roleManager);
             await SeedAdminAsync(userManager);
@@ -228,6 +252,7 @@ namespace WriteReview.Persistence.Seed
             await SeedExpert2Async(userManager);
             await SeedAdditionalExpertsAsync(userManager);
             await SeedAuthorAsync(userManager);
+            await SeedCategoriesAsync(db);
         }
     }
 }

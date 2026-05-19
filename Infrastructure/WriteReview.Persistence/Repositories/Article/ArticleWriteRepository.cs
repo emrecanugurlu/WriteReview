@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -29,15 +29,17 @@ namespace WriteReview.Persistence.Repositories.Article
         {
             var me = actor.GetCurrent().UserId;
 
+            var categoryId = Guid.TryParse(createArticleDto.CategoryId, out var parsedCategoryId)
+                ? parsedCategoryId
+                : Guid.Parse("10000000-0000-0000-0000-000000000001");
+
             var article = new Domain.Entities.Article
             {
                 Id = Guid.NewGuid(),
                 Title = createArticleDto.Title.Trim(),
-                Summary = createArticleDto.Summary.Trim(),
                 ContentPath = createArticleDto.Content,
                 Status = ArticleStatus.Draft,
-                CategoryId = Guid.Parse("48e3cf91-ca10-4c78-b0fe-aa17d87d2e3b"),
-                Tags = createArticleDto.Tags.Split(',').Select(t => t.Trim()).ToArray(),
+                CategoryId = categoryId,
                 AuthorId = me,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow

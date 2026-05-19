@@ -73,9 +73,7 @@ namespace WriteReview.API.Controllers
                     Title = a.Title,
                     Status = (int)a.Status,
                     UpdatedAt = a.UpdatedAt,
-                    Category = a.Category.Name,
-                    Tags = a.Tags,
-                    Summary = a.Summary
+                    Category = a.Category.Name
                 })
                 .ToListAsync();
 
@@ -109,6 +107,47 @@ namespace WriteReview.API.Controllers
 
 
 
+        [Authorize(Roles = Roles.Author)]
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> UpdateArticle(Guid id, [FromBody] CreateArticleRequest request)
+        {
+            var me = _actor.GetCurrent().UserId;
+
+            var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == id);
+            if (article is null)
+                return NotFound(new { Message = "Makale bulunamadı." });
+
+            if (article.AuthorId != me)
+                return Forbid();
+
+            if (article.Status != ArticleStatus.Draft && article.Status != ArticleStatus.RevisionsRequested)
+                return BadRequest(new { Message = "Yalnızca taslak veya revizyon beklenen makaleler düzenlenebilir." });
+
+            var dto = request.ArticleDto;
+
+            if (!string.IsNullOrWhiteSpace(dto.Title))
+                article.Title = dto.Title.Trim();
+
+            if (!string.IsNullOrWhiteSpace(dto.Content))
+                article.ContentPath = dto.Content;
+
+            if (Guid.TryParse(dto.CategoryId, out var categoryGuid))
+                article.CategoryId = categoryGuid;
+
+            article.UpdatedAt = DateTime.UtcNow;
+
+            if (request.IsSubmit)
+            {
+                if (article.Status == ArticleStatus.Draft)
+                    _articleStateService.DraftToSubmitted(article);
+                else
+                    _articleStateService.RevisionsRequestedToSubmitted(article);
+            }
+
+            await _db.SaveChangesAsync();
+            return Ok(new { id = article.Id, status = (int)article.Status });
+        }
+
         [Authorize(Roles = "Admin,Editor,Manager,Author,Expert")]
         [HttpGet("{articleId}")]
         public async Task<IActionResult> GetArticleWithId(string articleId)
@@ -124,8 +163,9 @@ namespace WriteReview.API.Controllers
         /// <param name="articleId"></param>
         /// <param name="expertId"></param>
         /// <returns></returns>
+        [Authorize(Roles = "Admin,Manager,Expert,Author")]
         [HttpGet("{articleId}/review")]
-        public async Task<IActionResult> GetArticleExpertReview(string articleId,[FromBody] string expertId)
+        public async Task<IActionResult> GetArticleExpertReview(string articleId, [FromQuery] string expertId)
         {
             var article = await _db.Articles
                 .AsNoTracking()
@@ -279,6 +319,22 @@ namespace WriteReview.API.Controllers
                 Total = total,
                 Items = items
             });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpDelete("{id:guid}")]
+        public async Task<IActionResult> DeleteArticle(Guid id)
+        {
+            var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == id);
+            if (article == null)
+            {
+                return NotFound(new { Message = "Makale bulunamadı." });
+            }
+
+            _db.Articles.Remove(article);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { Message = "Makale başarıyla silindi." });
         }
     }
 }

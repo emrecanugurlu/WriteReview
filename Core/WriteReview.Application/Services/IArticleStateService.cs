@@ -39,6 +39,10 @@ namespace WriteReview.Application.Services
         /// <param name="article"></param>
         /// <param name="note"></param>
         public void InReviewToRevisionsRequested(Article article, string note);
-       
+        /// <summary>
+        /// Revizyon istenen makaleyi yazar düzelttikten sonra tekrar gönderir.
+        /// </summary>
+        /// <param name="article"></param>
+        public void RevisionsRequestedToSubmitted(Article article);
     }
 }

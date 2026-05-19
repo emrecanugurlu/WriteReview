@@ -1,28 +1,29 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Data.Entity;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using WriteReview.Domain.Entities.EnumClass;
 using WriteReview.Persistence.Contexts;
 
 namespace WriteReview.Persistence.Services.Review
 {
-    internal class ReviewService
+    public class ReviewService
     {
+        private readonly WriteReviewDbContext _db;
 
-        public void GetReviewByArticleId(Guid id, WriteReviewDbContext writeReviewDbContext)
+        public ReviewService(WriteReviewDbContext db)
         {
-            var article = writeReviewDbContext.Articles
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id);
+            _db = db;
+        }
 
-            if (article == null)
-            {
+        public async Task<object?> GetReviewByArticleIdAsync(Guid id)
+        {
+            var exists = await _db.Articles.AsNoTracking().AnyAsync(x => x.Id == id);
+            if (!exists)
                 throw new Exception("Article not found.");
-            }
 
-            writeReviewDbContext.ArticleReviews
+            return await _db.ArticleReviews
                 .AsNoTracking()
                 .Where(r => r.ArticleId == id)
                 .OrderByDescending(r => r.CreatedAt)
@@ -38,7 +39,6 @@ namespace WriteReview.Persistence.Services.Review
                     reviewerId = r.ReviewerId
                 })
                 .ToListAsync();
-
         }
     }
 }

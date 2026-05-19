@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,9 +11,7 @@ namespace WriteReview.Domain.Entities
     {
         public Guid Id { get; set; }
         public string Title { get; set; } = string.Empty;
-        public string Summary { get; set; } = string.Empty;
         public string ContentPath { get; set; } = string.Empty;
-        public string[] Tags { get; set; } = default!;
         public Guid AuthorId { get; set; }
         public AppUser Author { get; set; }
         public ICollection<ArticleReview> Reviews { get; set; } = new List<ArticleReview>();

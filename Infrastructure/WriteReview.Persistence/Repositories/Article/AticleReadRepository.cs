@@ -29,8 +29,8 @@ namespace WriteReview.Persistence.Repositories.Article
             {
                 Status = (int)article.Status,
                 Title = article.Title,
-                Summary = article.Summary,
                 Content = article.ContentPath,
+                CategoryId = article.CategoryId,
                 Category = article.Category.Name,
                 AuthorName = article.Author.FullName,
                 Id = article.Id,

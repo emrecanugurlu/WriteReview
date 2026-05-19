@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 using System;
 using System.Security.Claims;
 using System.Text;
+using WriteReview.API.Middleware;
 using WriteReview.Application.Repositories.AppUser;
 using WriteReview.Application.Repositories.Article;
 using WriteReview.Application.Repositories.ArticleExpertAssignment;
@@ -24,7 +26,15 @@ using WriteReview.Persistence.Services.Articles;
 using WriteReview.Persistence.Services.Expert;
 using WriteReview.Persistence.Services.ExpertiseArea;
 
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, config) =>
+    config.ReadFrom.Configuration(context.Configuration)
+          .ReadFrom.Services(services));
 
 
 builder.Services.AddControllers();
@@ -104,27 +114,27 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+    var db = scope.ServiceProvider.GetRequiredService<WriteReviewDbContext>();
 
-    await ApplicationDbInitializer.SeedAsync(roleManager, userManager);
-
+    await ApplicationDbInitializer.SeedAsync(roleManager, userManager, db);
 }
-
-app.MapGet("/api/debug/whoami",
-    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-(HttpContext ctx) =>
-    {
-        var isAuth = ctx.User?.Identity?.IsAuthenticated ?? false;
-        var claims = ctx.User?.Claims.Select(c => new { c.Type, c.Value }) ?? [];
-        return Results.Ok(new { isAuth, claims });
-    });
-
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapGet("/api/debug/whoami",
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+    (HttpContext ctx) =>
+        {
+            var isAuth = ctx.User?.Identity?.IsAuthenticated ?? false;
+            var claims = ctx.User?.Claims.Select(c => new { c.Type, c.Value }) ?? [];
+            return Results.Ok(new { isAuth, claims });
+        });
 }
 
-app.UseHttpsRedirection(); 
+app.UseMiddleware<ExceptionHandlerMiddleware>();
+app.UseSerilogRequestLogging();
+app.UseHttpsRedirection();
 app.UseCors("AllowAngular");
 app.UseAuthentication();
 app.UseAuthorization();

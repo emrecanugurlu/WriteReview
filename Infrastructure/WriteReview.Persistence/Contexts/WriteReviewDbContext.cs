@@ -15,6 +15,7 @@ namespace WriteReview.Persistence.Contexts
         public DbSet<ArticleReview> ArticleReviews { get; set; }
         public DbSet<ArticleExpertAssignment> ArticleExpertAssignments { get; set; }
         public DbSet<ExpertiseArea> ExpertiseAreas { get; set; }
+        public DbSet<UserExpertiseArea> UserExpertiseAreas { get; set; }
         public DbSet<Category> Categories { get; set; }
         public WriteReviewDbContext(DbContextOptions options) : base(options)
         {
@@ -78,13 +79,14 @@ namespace WriteReview.Persistence.Contexts
 
             builder.Entity<UserExpertiseArea>(b =>
             {
+                b.ToTable("UserExpertiseArea");
                 b.HasKey(ue => new {ue.UserId,ue.ExpertiseAreaId});
 
                 b.HasOne(ue => ue.User)
                 .WithMany(e => e.ExpertiseAreas)
                 .HasForeignKey(ue => ue.UserId);
 
-                 b.HasOne(ue => ue.ExpertiseArea)
+                b.HasOne(ue => ue.ExpertiseArea)
                 .WithMany(e => e.Users)
                 .HasForeignKey(ue=> ue.ExpertiseAreaId);
 

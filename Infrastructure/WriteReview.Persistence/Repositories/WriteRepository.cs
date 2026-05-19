@@ -1,9 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Data.Entity.Infrastructure;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using WriteReview.Application.Repositories;
 using WriteReview.Persistence.Contexts;

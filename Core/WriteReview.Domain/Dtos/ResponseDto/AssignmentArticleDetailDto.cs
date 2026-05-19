@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,7 +10,6 @@ namespace WriteReview.Domain.Dtos.ResponseDto
     {
         public Guid ArticleId { get; set; }
         public string ArticleTitle { get; set; } = string.Empty;
-        public string ArticleSummary { get; set; }
         public string AuthorName { get; set; } = string.Empty;
         public string ArticleCategory { get; set; } = string.Empty;
         public string ArticleContent { get; set; } = string.Empty;

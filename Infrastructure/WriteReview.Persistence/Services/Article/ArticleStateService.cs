@@ -128,5 +128,21 @@ namespace WriteReview.Persistence.Services.Articles
 
             AddReview(article, ReviewAction.RequestRevision, actor.UserId, from, ArticleStatus.RevisionsRequested, note: note.Trim());
         }
+
+        public void RevisionsRequestedToSubmitted(Article article)
+        {
+            var actor = _actor.GetCurrent();
+            if (article is null) throw new ArgumentNullException(nameof(article));
+            if (article.Status != ArticleStatus.RevisionsRequested)
+                throw new InvalidOperationException("Sadece RevisionsRequested durumundaki makaleler yeniden gönderilebilir.");
+            if (!HasAnyRole(actor, "Author")) throw new UnauthorizedAccessException("Sadece Author gönderebilir.");
+            if (article.AuthorId != actor.UserId) throw new UnauthorizedAccessException("Sadece sahibi gönderebilir.");
+
+            var from = article.Status;
+            article.Status = ArticleStatus.Submitted;
+            article.UpdatedAt = DateTime.UtcNow;
+
+            AddReview(article, ReviewAction.TakeToReview, actor.UserId, from, ArticleStatus.Submitted, note: "Author resubmitted after revision");
+        }
     }
 }

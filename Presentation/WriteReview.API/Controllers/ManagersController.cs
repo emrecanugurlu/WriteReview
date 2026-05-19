@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +12,7 @@ namespace WriteReview.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(Roles = "Admin,Manager")]
     public class ManagersController : ControllerBase
     {
         private readonly WriteReviewDbContext _db;
@@ -31,7 +32,7 @@ namespace WriteReview.API.Controllers
             if (status.HasValue)
                 q = q.Where(a => a.Status == status.Value);
             else
-                q = q.Where(a => a.Status == ArticleStatus.Submitted || a.Status == ArticleStatus.InReview);
+                q = q.Where(a => a.Status != ArticleStatus.Draft);
 
             var total = await q.CountAsync();
             var items = await q

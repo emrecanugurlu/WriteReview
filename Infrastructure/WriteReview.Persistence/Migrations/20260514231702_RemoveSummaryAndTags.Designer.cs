@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WriteReview.Persistence.Contexts;
 
@@ -11,9 +12,11 @@ using WriteReview.Persistence.Contexts;
 namespace WriteReview.Persistence.Migrations
 {
     [DbContext(typeof(WriteReviewDbContext))]
-    partial class WriteReviewDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514231702_RemoveSummaryAndTags")]
+    partial class RemoveSummaryAndTags
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

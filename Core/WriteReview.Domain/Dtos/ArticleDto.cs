@@ -14,9 +14,9 @@ namespace WriteReview.Domain.Dtos
     {
         public Guid Id { get; init; }
         public string Title { get; init; } = "";
-        public string Summary { get; init; } = default!;
         public string Content { get; set; } = default!;
         public string AuthorName { get; set; }
+        public Guid CategoryId { get; set; }
         public string Category { get; set; }
         public int Status { get; init; }
         public DateTime UpdatedAt { get; init; }
