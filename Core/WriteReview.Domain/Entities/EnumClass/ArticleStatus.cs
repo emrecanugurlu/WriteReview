@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +13,10 @@ namespace WriteReview.Domain.Entities.EnumClass
         InReview = 2,
         Approved = 3,
         Rejected = 4,
-        RevisionsRequested = 5
+        RevisionsRequested = 5,
+        /// <summary>
+        /// Yazar reddedilen makaleye itiraz etti, Manager karar bekliyor.
+        /// </summary>
+        AppealPending = 6
     }
 }

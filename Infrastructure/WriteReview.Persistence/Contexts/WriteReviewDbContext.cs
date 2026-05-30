@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -12,11 +12,13 @@ namespace WriteReview.Persistence.Contexts
     public class WriteReviewDbContext : IdentityDbContext<AppUser,AppRole,Guid> 
     {
         public DbSet<Article> Articles { get; set; }
+        public DbSet<ArticleVersion> ArticleVersions { get; set; }
         public DbSet<ArticleReview> ArticleReviews { get; set; }
         public DbSet<ArticleExpertAssignment> ArticleExpertAssignments { get; set; }
         public DbSet<ExpertiseArea> ExpertiseAreas { get; set; }
         public DbSet<UserExpertiseArea> UserExpertiseAreas { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<AppNotification> Notifications { get; set; }
         public WriteReviewDbContext(DbContextOptions options) : base(options)
         {
         }
@@ -40,6 +42,16 @@ namespace WriteReview.Persistence.Contexts
                 .HasForeignKey(a => a.AuthorId);
             });
 
+            builder.Entity<ArticleVersion>(b =>
+            {
+                b.HasKey(x => x.Id);
+                
+                b.HasOne(x => x.Article)
+                 .WithMany(a => a.Versions)
+                 .HasForeignKey(x => x.ArticleId)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
             builder.Entity<ArticleReview>(b =>
             {
                 b.HasKey(x => x.Id);
@@ -48,6 +60,11 @@ namespace WriteReview.Persistence.Contexts
                  .WithMany(a => a.Reviews)            
                  .HasForeignKey(x => x.ArticleId)
                  .OnDelete(DeleteBehavior.Cascade);
+
+                b.HasOne(x => x.ArticleVersion)
+                 .WithMany()
+                 .HasForeignKey(x => x.ArticleVersionId)
+                 .OnDelete(DeleteBehavior.Restrict);
 
                 b.HasOne(x => x.Reviewer)
                  .WithMany()                         
@@ -100,6 +117,15 @@ namespace WriteReview.Persistence.Contexts
                 b.HasMany(c => c.Articles)
                  .WithOne(a => a.Category)
                  .HasForeignKey(a => a.CategoryId);
+            });
+
+            builder.Entity<AppNotification>(b =>
+            {
+                b.HasKey(n => n.Id);
+                b.HasOne(n => n.User)
+                 .WithMany()
+                 .HasForeignKey(n => n.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
 

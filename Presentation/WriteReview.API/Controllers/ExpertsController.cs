@@ -1,5 +1,4 @@
 
-using Azure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -17,6 +16,8 @@ using WriteReview.Persistence.Contexts;
 using WriteReview.Persistence.Repositories.ArticleExpertAssignment;
 using WriteReview.Persistence.Services.Articles;
 using WriteReview.Persistence.Services.Expert;
+using Microsoft.AspNetCore.SignalR;
+using WriteReview.API.Hubs;
 
 namespace WriteReview.API.Controllers
 {
@@ -31,9 +32,10 @@ namespace WriteReview.API.Controllers
         private readonly ArticleStateService _articleStateService;
         private readonly ArticleService _articleService;
         private readonly ExpertService _expertService;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
 
-        public ExpertsController(IActorContextAccessor actor, WriteReviewDbContext db, ExpertService expertService, ArticleStateService articleStateService, ArticleService articleService, IArticleExpertAssignmentWriteRepository articleExpertAssignmentWriteRepository, IArticleExpertAssignmentReadRepository articleExpertAssignmentReadRepository)
+        public ExpertsController(IActorContextAccessor actor, WriteReviewDbContext db, ExpertService expertService, ArticleStateService articleStateService, ArticleService articleService, IArticleExpertAssignmentWriteRepository articleExpertAssignmentWriteRepository, IArticleExpertAssignmentReadRepository articleExpertAssignmentReadRepository, IHubContext<NotificationHub> hubContext)
         {
             _actor = actor;
             _db = db;
@@ -42,6 +44,7 @@ namespace WriteReview.API.Controllers
             _articleExpertAssignmentWriteRepository = articleExpertAssignmentWriteRepository;
             _articleExpertAssignmentReadRepository = articleExpertAssignmentReadRepository;
             _expertService = expertService;
+            _hubContext = hubContext;
         }
 
         [Authorize(Roles = "Expert")]
@@ -78,8 +81,8 @@ namespace WriteReview.API.Controllers
                     ArticleId = a.ArticleId,
                     ArticleTitle = a.Article.Title ?? "",
                     Status = (int)a.Status,
-                    AuthorName = a.Article!.Author.FullName ?? "",
-                    ArticleCategory = a.Article!.Category.Name ?? "",
+                    AuthorName = "Gizli Yazar",
+                    ArticleCategory = a.Article!.Category != null ? a.Article.Category.Name : "",
                     ReviewedAt = a.ReviewedAt
                 })
                 .ToListAsync();
@@ -117,10 +120,10 @@ namespace WriteReview.API.Controllers
             return Ok(new AssignmentArticleDetailDto
             {
                 ArticleId = items.ArticleId,
-                ArticleCategory = items.Article.Category.Name,
+                ArticleCategory = items.Article.Category != null ? items.Article.Category.Name : "",
                 ArticleContent = items.Article.ContentPath,
                 ArticleTitle = items.Article.Title,
-                AuthorName = items.Article.Author.FullName,
+                AuthorName = "Gizli Yazar",
                 Status = (int)items.Status,
                 Feedback = items.Feedback,
                 Score = items.Score,
@@ -179,8 +182,12 @@ namespace WriteReview.API.Controllers
                 assignment.Article.UpdatedAt = DateTime.UtcNow;
                 // You could optionally change the article status here if desired.
             }
+            
+            var authorNotif = new AppNotification { UserId = assignment.Article.AuthorId, Title = "Yeni Hakem Değerlendirmesi", Message = $"'{assignment.Article.Title}' başlıklı makaleniz için bir hakem değerlendirmesini tamamladı." };
+            _db.Notifications.Add(authorNotif);
 
             await _db.SaveChangesAsync();
+            await _hubContext.Clients.Group(assignment.Article.AuthorId.ToString()).SendAsync("ReceiveNotification", authorNotif);
 
             return Ok(new
             {

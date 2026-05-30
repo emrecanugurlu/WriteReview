@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +12,7 @@ namespace WriteReview.Persistence.Repositories
 {
     public class ReadRepository<T> : IReadRepository<T> where T : class
     {
-        WriteReviewDbContext _context;
+        protected readonly WriteReviewDbContext _context;
 
         public ReadRepository(WriteReviewDbContext context)
         {

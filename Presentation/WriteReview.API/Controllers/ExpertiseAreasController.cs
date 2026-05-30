@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.EntityFrameworkCore;
@@ -22,14 +23,16 @@ namespace WriteReview.API.Controllers
         private readonly IExpertiseAreaWriteRepository _expertiseAreaWriteRepository;
         private readonly IExpertiseAreaReadRepository _expertiseAreaReadRepository;
         private readonly IActorContextAccessor _actor;
+        private readonly UserManager<AppUser> _userManager;
 
-        public ExpertiseAreasController(ExpertiseAreaService expertiseAreaService, WriteReviewDbContext db, IExpertiseAreaWriteRepository expertiseAreaWriteRepository, IExpertiseAreaReadRepository expertiseAreaReadRepository, IActorContextAccessor actor)
+        public ExpertiseAreasController(ExpertiseAreaService expertiseAreaService, WriteReviewDbContext db, IExpertiseAreaWriteRepository expertiseAreaWriteRepository, IExpertiseAreaReadRepository expertiseAreaReadRepository, IActorContextAccessor actor, UserManager<AppUser> userManager)
         {
             _expertiseAreaService = expertiseAreaService;
             _db = db;
             _expertiseAreaWriteRepository = expertiseAreaWriteRepository;
             _expertiseAreaReadRepository = expertiseAreaReadRepository;
             _actor = actor;
+            _userManager = userManager;
         }
 
         [Authorize]
@@ -128,8 +131,11 @@ namespace WriteReview.API.Controllers
             var areaExists = await _db.ExpertiseAreas.AnyAsync(a => a.Id == areaId);
             if (!areaExists) return NotFound(new { Message = "Uzmanlık alanı bulunamadı." });
 
-            var userExists = await _db.Users.AnyAsync(u => u.Id == userId);
-            if (!userExists) return NotFound(new { Message = "Kullanıcı bulunamadı." });
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user is null) return NotFound(new { Message = "Kullanıcı bulunamadı." });
+
+            var isExpert = await _userManager.IsInRoleAsync(user, "Expert");
+            if (!isExpert) return BadRequest(new { Message = "Uzmanlık alanı yalnızca Expert rolündeki kullanıcılara atanabilir." });
 
             var already = await _db.UserExpertiseAreas.AnyAsync(ue => ue.UserId == userId && ue.ExpertiseAreaId == areaId);
             if (already) return Conflict(new { Message = "Bu atama zaten mevcut." });

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,6 +13,13 @@ namespace WriteReview.Domain.Entities
 
         public Guid ArticleId { get; set; }
         public Article Article { get; set; } = default!;
+
+        /// <summary>
+        /// İncelemenin ait olduğu spesifik versiyon (null ise ana makale/son versiyondur)
+        /// </summary>
+        public Guid? ArticleVersionId { get; set; }
+        public ArticleVersion? ArticleVersion { get; set; }
+
         /// <summary>
         /// Review yapan personel kimliği
         /// </summary>

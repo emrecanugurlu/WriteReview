@@ -23,9 +23,29 @@ namespace WriteReview.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10, [FromQuery] string? search = null)
         {
-            var users = await _userManager.Users.ToListAsync();
+            if (page < 1) page = 1;
+            if (pageSize < 1 || pageSize > 50) pageSize = 10;
+
+            var query = _userManager.Users.AsQueryable();
+            
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+                query = query.Where(u => u.FullName.ToLower().Contains(lowerSearch) || 
+                                         u.Email.ToLower().Contains(lowerSearch) || 
+                                         u.UserName.ToLower().Contains(lowerSearch));
+            }
+
+            var total = await query.CountAsync();
+
+            var users = await query
+                .OrderBy(u => u.FullName)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
             var userList = new System.Collections.Generic.List<object>();
 
             foreach (var user in users)
@@ -41,7 +61,13 @@ namespace WriteReview.API.Controllers
                 });
             }
 
-            return Ok(userList);
+            return Ok(new PagedResult<object>
+            {
+                Page = page,
+                PageSize = pageSize,
+                Total = total,
+                Items = userList
+            });
         }
 
         public class CreateUserRequest
@@ -113,6 +139,17 @@ namespace WriteReview.API.Controllers
 
             var roleExists = await _roleManager.RoleExistsAsync(request.RoleName);
             if (!roleExists) return NotFound(new { Message = "Sistemde böyle bir rol bulunamadı." });
+
+            var currentRoles = await _userManager.GetRolesAsync(user);
+            if (currentRoles.Count > 0)
+                return BadRequest(new { Message = $"Bu kullanıcıya zaten '{currentRoles[0]}' rolü atanmış. Her kullanıcının yalnızca 1 rolü olabilir." });
+
+            if (request.RoleName == "Admin")
+            {
+                var admins = await _userManager.GetUsersInRoleAsync("Admin");
+                if (admins.Count > 0)
+                    return BadRequest(new { Message = "Sistemde zaten bir Admin kullanıcısı mevcut. Yalnızca 1 Admin olabilir." });
+            }
 
             var result = await _userManager.AddToRoleAsync(user, request.RoleName);
             if (result.Succeeded) return Ok(new { Message = "Rol başarıyla atandı." });

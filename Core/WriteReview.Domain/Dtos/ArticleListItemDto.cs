@@ -12,6 +12,6 @@ namespace WriteReview.Domain.Dtos
         public string Title { get; init; } = string.Empty;
         public int Status { get; init; }
         public DateTime UpdatedAt { get; init; }
-        public string Category { get; set; }
+        public string? Category { get; set; }
     }
 }

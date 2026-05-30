@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -44,5 +44,26 @@ namespace WriteReview.Application.Services
         /// </summary>
         /// <param name="article"></param>
         public void RevisionsRequestedToSubmitted(Article article);
+
+        /// <summary>
+        /// Reddedilen makaleye yazar itiraz eder. Her makale için yalnızca 1 itiraz hakkı vardır.
+        /// </summary>
+        /// <param name="article">İtiraz edilecek makale</param>
+        /// <param name="appealReason">İtiraz gerekçesi (zorunlu, en az 20 karakter)</param>
+        public void RejectedToAppealPending(Article article, string appealReason);
+
+        /// <summary>
+        /// Manager itirazı kabul eder; makale InReview durumuna döner ve opsiyonel olarak yeni/eski hakem ataması yapılabilir.
+        /// </summary>
+        /// <param name="article">İtiraz edilen makale</param>
+        /// <param name="note">Karar notu (opsiyonel)</param>
+        public void AppealPendingToInReview(Article article, string? note);
+
+        /// <summary>
+        /// Manager itirazı reddeder; makale Rejected durumuna geri döner (kesin sonuç).
+        /// </summary>
+        /// <param name="article">İtiraz edilen makale</param>
+        /// <param name="reason">Red gerekçesi (zorunlu)</param>
+        public void AppealPendingToRejected(Article article, string reason);
     }
 }

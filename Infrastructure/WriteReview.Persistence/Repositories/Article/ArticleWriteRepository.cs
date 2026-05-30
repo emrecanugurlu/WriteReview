@@ -29,9 +29,9 @@ namespace WriteReview.Persistence.Repositories.Article
         {
             var me = actor.GetCurrent().UserId;
 
-            var categoryId = Guid.TryParse(createArticleDto.CategoryId, out var parsedCategoryId)
+            Guid? categoryId = Guid.TryParse(createArticleDto.CategoryId, out var parsedCategoryId)
                 ? parsedCategoryId
-                : Guid.Parse("10000000-0000-0000-0000-000000000001");
+                : null;
 
             var article = new Domain.Entities.Article
             {
@@ -50,16 +50,9 @@ namespace WriteReview.Persistence.Repositories.Article
                 articleStateService.DraftToSubmitted(article);
             }
 
-            try
-            {
-                await this.AddAsync(article);
-                await this.SaveChangesAsync();
-                return "Kayıt İşlemi Başarıyla Gerçekleşti...";
-            }
-            catch
-            {
-                return "Kayıt İşlemi Sırasında Hata Oluştu";
-            }
+            await this.AddAsync(article);
+            await this.SaveChangesAsync();
+            return "Kayıt İşlemi Başarıyla Gerçekleşti...";
 
         }
     }

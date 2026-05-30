@@ -21,6 +21,7 @@ namespace WriteReview.API.Controllers
         [HttpGet("articles")]
         public async Task<IActionResult> ListArticleForManager(
             [FromQuery] ArticleStatus? status = null,
+            [FromQuery] string? search = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -33,6 +34,14 @@ namespace WriteReview.API.Controllers
                 q = q.Where(a => a.Status == status.Value);
             else
                 q = q.Where(a => a.Status != ArticleStatus.Draft);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+                q = q.Where(a => (a.Title != null && a.Title.ToLower().Contains(lowerSearch)) || 
+                                 (a.Author != null && a.Author.FullName != null && a.Author.FullName.ToLower().Contains(lowerSearch)) ||
+                                 (a.Category != null && a.Category.Name != null && a.Category.Name.ToLower().Contains(lowerSearch)));
+            }
 
             var total = await q.CountAsync();
             var items = await q
@@ -53,7 +62,7 @@ namespace WriteReview.API.Controllers
                     Experts = a.ExpertAssignments
                         .Select(ea => ea.Expert.FullName)
                         .ToList(),
-                    Category = a.Category.Name,
+                    Category = a.Category != null ? a.Category.Name : null,
                     CreatedAt = a.CreatedAt,
                     UpdatedAt = a.UpdatedAt
                 })

@@ -1,4 +1,4 @@
-﻿
+
 using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
@@ -11,6 +11,8 @@ namespace WriteReview.Domain.Entities
     public class AppUser : IdentityUser<Guid>
     {
         public string FullName { get; set; } = default!;
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiryTime { get; set; }
         public ICollection<Article>? Articles { get; set; }
         public ICollection<UserExpertiseArea> ExpertiseAreas { get; set; } = new List<UserExpertiseArea>();
     }

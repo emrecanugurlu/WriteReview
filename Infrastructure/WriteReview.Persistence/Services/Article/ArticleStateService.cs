@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -143,6 +143,79 @@ namespace WriteReview.Persistence.Services.Articles
             article.UpdatedAt = DateTime.UtcNow;
 
             AddReview(article, ReviewAction.TakeToReview, actor.UserId, from, ArticleStatus.Submitted, note: "Author resubmitted after revision");
+        }
+
+        /// <summary>
+        /// Reddedilen makaleye yazar itiraz eder.
+        /// Her makale için yalnızca 1 itiraz hakkı tanınır.
+        /// </summary>
+        public void RejectedToAppealPending(Article article, string appealReason)
+        {
+            var actor = _actor.GetCurrent();
+            if (article is null) throw new ArgumentNullException(nameof(article));
+            if (article.Status != ArticleStatus.Rejected)
+                throw new InvalidOperationException("Yalnızca reddedilmiş makaleler için itiraz yapılabilir.");
+            if (!HasAnyRole(actor, "Author"))
+                throw new UnauthorizedAccessException("Yalnızca Author itiraz edebilir.");
+            if (article.AuthorId != actor.UserId)
+                throw new UnauthorizedAccessException("Yalnızca makale sahibi itiraz edebilir.");
+            if (string.IsNullOrWhiteSpace(appealReason) || appealReason.Trim().Length < 20)
+                throw new ArgumentException("İtiraz gerekçesi en az 20 karakter olmalıdır.", nameof(appealReason));
+
+            // 1 itiraz hakkı kontrolü: daha önce AppealSubmitted kaydı var mı?
+            var alreadyAppealed = _writeReviewDbContext.ArticleReviews
+                .Any(r => r.ArticleId == article.Id && r.Action == ReviewAction.AppealSubmitted);
+            if (alreadyAppealed)
+                throw new InvalidOperationException("Bu makale için itiraz hakkınızı daha önce kullandınız.");
+
+            var from = article.Status;
+            article.Status = ArticleStatus.AppealPending;
+            article.UpdatedAt = DateTime.UtcNow;
+
+            AddReview(article, ReviewAction.AppealSubmitted, actor.UserId, from, ArticleStatus.AppealPending,
+                note: appealReason.Trim());
+        }
+
+        /// <summary>
+        /// Manager itirazı kabul eder; makale InReview durumuna geri döner.
+        /// </summary>
+        public void AppealPendingToInReview(Article article, string? note)
+        {
+            var actor = _actor.GetCurrent();
+            if (article is null) throw new ArgumentNullException(nameof(article));
+            if (article.Status != ArticleStatus.AppealPending)
+                throw new InvalidOperationException("Yalnızca itiraz bekleyen makaleler bu işlemle güncellenebilir.");
+            if (!HasAnyRole(actor, "Admin", "Editor", "Manager"))
+                throw new UnauthorizedAccessException("Bu işlem için staff rolü gerekir.");
+
+            var from = article.Status;
+            article.Status = ArticleStatus.InReview;
+            article.UpdatedAt = DateTime.UtcNow;
+
+            AddReview(article, ReviewAction.AppealAccepted, actor.UserId, from, ArticleStatus.InReview,
+                note: note?.Trim());
+        }
+
+        /// <summary>
+        /// Manager itirazı reddeder; makale Rejected durumuna geri döner (kesin sonuç).
+        /// </summary>
+        public void AppealPendingToRejected(Article article, string reason)
+        {
+            var actor = _actor.GetCurrent();
+            if (article is null) throw new ArgumentNullException(nameof(article));
+            if (article.Status != ArticleStatus.AppealPending)
+                throw new InvalidOperationException("Yalnızca itiraz bekleyen makaleler bu işlemle güncellenebilir.");
+            if (!HasAnyRole(actor, "Admin", "Editor", "Manager"))
+                throw new UnauthorizedAccessException("Bu işlem için staff rolü gerekir.");
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("Red gerekçesi boş olamaz.", nameof(reason));
+
+            var from = article.Status;
+            article.Status = ArticleStatus.Rejected;
+            article.UpdatedAt = DateTime.UtcNow;
+
+            AddReview(article, ReviewAction.AppealDenied, actor.UserId, from, ArticleStatus.Rejected,
+                reason: reason.Trim());
         }
     }
 }

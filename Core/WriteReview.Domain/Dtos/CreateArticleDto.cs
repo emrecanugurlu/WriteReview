@@ -10,6 +10,6 @@ namespace WriteReview.Domain.Dtos
     {
         public string Title { get; set; } = default!;
         public  string Content { get; set; } = default!;
-        public string CategoryId { get; set; } = default!;
+        public string? CategoryId { get; set; }
     }
 }

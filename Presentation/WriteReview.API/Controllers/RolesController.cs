@@ -33,6 +33,26 @@ namespace WriteReview.API.Controllers
             return Ok(roles);
         }
 
+        [HttpGet("withusers")]
+        public async Task<IActionResult> GetAllRolesWithUsers()
+        {
+            var roles = await _roleManager.Roles.ToListAsync();
+            var result = new List<object>();
+
+            foreach (var role in roles)
+            {
+                var users = await _userManager.GetUsersInRoleAsync(role.Name!);
+                result.Add(new
+                {
+                    Id = role.Id,
+                    Name = role.Name,
+                    Users = users.Select(u => new { Id = u.Id, Name = u.FullName })
+                });
+            }
+
+            return Ok(result);
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetRoleDetail(Guid id)
         {

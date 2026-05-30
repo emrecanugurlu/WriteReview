@@ -52,6 +52,24 @@ namespace WriteReview.API.Controllers
                 })
                 .ToListAsync();
 
+            var sixMonthsAgo = DateTime.UtcNow.AddMonths(-6);
+            var monthlySubmissionsRaw = await _db.Articles
+                .Where(a => a.CreatedAt >= sixMonthsAgo)
+                .GroupBy(a => new { a.CreatedAt.Year, a.CreatedAt.Month })
+                .Select(g => new { Year = g.Key.Year, Month = g.Key.Month, Count = g.Count() })
+                .ToListAsync();
+
+            var monthlySubmissions = monthlySubmissionsRaw
+                .Select(x => new { Month = new DateTime(x.Year, x.Month, 1).ToString("MMM yyyy"), Count = x.Count })
+                .ToList();
+
+            var categoryDistribution = await _db.Articles
+                .Include(a => a.Category)
+                .Where(a => a.Category != null)
+                .GroupBy(a => a.Category.Name)
+                .Select(g => new { CategoryName = g.Key, Count = g.Count() })
+                .ToListAsync();
+
             return Ok(new
             {
                 userCount,
@@ -61,7 +79,9 @@ namespace WriteReview.API.Controllers
                 approved = CountByStatus(ArticleStatus.Approved),
                 rejected = CountByStatus(ArticleStatus.Rejected),
                 revisionsRequested = CountByStatus(ArticleStatus.RevisionsRequested),
-                recentArticles
+                recentArticles,
+                monthlySubmissions,
+                categoryDistribution
             });
         }
     }

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Identity.Client;
 using System.Numerics;
 using System.Security.Claims;
 using WriteReview.Application.Repositories.Article;
@@ -17,6 +16,9 @@ using WriteReview.Domain.Security;
 using WriteReview.Persistence.Contexts;
 using WriteReview.Persistence.Repositories.Article;
 using WriteReview.Persistence.Services.Articles;
+using Microsoft.AspNetCore.SignalR;
+using WriteReview.API.Hubs;
+using Ganss.Xss;
 
 namespace WriteReview.API.Controllers
 {
@@ -30,8 +32,16 @@ namespace WriteReview.API.Controllers
         private readonly ArticleStateService _articleStateService;
         private readonly IArticleWriteRepository _articleWriteRepository;
         private readonly IArticleReadRepository _articleReadRepository;
+        private readonly IHubContext<NotificationHub> _hubContext;
 
-        public ArticlesController(WriteReviewDbContext db, IActorContextAccessor actor, ArticleService articleService, ArticleStateService articleStateService, IArticleWriteRepository articleWriteRepository, IArticleReadRepository articleReadRepository)
+        public ArticlesController(
+            WriteReviewDbContext db, 
+            IActorContextAccessor actor, 
+            ArticleService articleService, 
+            ArticleStateService articleStateService, 
+            IArticleWriteRepository articleWriteRepository, 
+            IArticleReadRepository articleReadRepository,
+            IHubContext<NotificationHub> hubContext)
         {
             _db = db;
             _actor = actor;
@@ -39,6 +49,7 @@ namespace WriteReview.API.Controllers
             _articleStateService = articleStateService;
             _articleWriteRepository = articleWriteRepository;
             _articleReadRepository = articleReadRepository;
+            _hubContext = hubContext;
         }
 
         [Authorize(Roles = Roles.Author)]
@@ -73,7 +84,7 @@ namespace WriteReview.API.Controllers
                     Title = a.Title,
                     Status = (int)a.Status,
                     UpdatedAt = a.UpdatedAt,
-                    Category = a.Category.Name
+                    Category = a.Category != null ? a.Category.Name : null
                 })
                 .ToListAsync();
 
@@ -94,15 +105,34 @@ namespace WriteReview.API.Controllers
             [FromBody] CreateArticleRequest createArticleRequest
             )
         {
-            var createArticleDto = createArticleRequest.ArticleDto;
-            var isSubmit = createArticleRequest.IsSubmit;
-            var addArticleMessage = await _articleWriteRepository.AddArticleWithAuthor(
-                _actor, 
-                createArticleDto, 
-                isSubmit, 
-                _articleStateService);
-            return Ok(new AddArticleResponse { Message = addArticleMessage });
+            try
+            {
+                var createArticleDto = createArticleRequest.ArticleDto;
+                var isSubmit = createArticleRequest.IsSubmit;
 
+                // XSS Sanitization
+                if (!string.IsNullOrWhiteSpace(createArticleDto.Content))
+                {
+                    createArticleDto.Content = new HtmlSanitizer().Sanitize(createArticleDto.Content);
+                }
+
+                var addArticleMessage = await _articleWriteRepository.AddArticleWithAuthor(
+                    _actor,
+                    createArticleDto,
+                    isSubmit,
+                    _articleStateService);
+
+                if (isSubmit)
+                {
+                    await NotifyManagersAsync($"'{createArticleDto.Title}' başlıklı yeni bir makale inceleme bekliyor.");
+                }
+
+                return Ok(new AddArticleResponse { Message = addArticleMessage });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Kayıt işlemi sırasında hata oluştu.", Detail = ex.Message });
+            }
         }
 
 
@@ -120,8 +150,36 @@ namespace WriteReview.API.Controllers
             if (article.AuthorId != me)
                 return Forbid();
 
-            if (article.Status != ArticleStatus.Draft && article.Status != ArticleStatus.RevisionsRequested)
-                return BadRequest(new { Message = "Yalnızca taslak veya revizyon beklenen makaleler düzenlenebilir." });
+            if (article.Status != ArticleStatus.Draft && article.Status != ArticleStatus.Submitted && article.Status != ArticleStatus.RevisionsRequested)
+                return BadRequest(new { Message = "Yalnızca taslak, gönderilmiş veya revizyon beklenen makaleler düzenlenebilir." });
+
+            if (article.Status == ArticleStatus.RevisionsRequested)
+            {
+                var currentVersionsCount = await _db.ArticleVersions.CountAsync(v => v.ArticleId == article.Id);
+                var expectedVersionNumber = currentVersionsCount + 1;
+                var snapshotExists = await _db.ArticleVersions.AnyAsync(v => v.ArticleId == article.Id && v.VersionNumber == expectedVersionNumber);
+                
+                if (!snapshotExists)
+                {
+                    var version = new ArticleVersion
+                    {
+                        ArticleId = article.Id,
+                        VersionNumber = expectedVersionNumber,
+                        ContentPath = article.ContentPath,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _db.ArticleVersions.Add(version);
+
+                    var oldReviews = await _db.ArticleReviews
+                        .Where(r => r.ArticleId == article.Id && r.ArticleVersionId == null)
+                        .ToListAsync();
+                    
+                    foreach (var review in oldReviews)
+                    {
+                        review.ArticleVersionId = version.Id;
+                    }
+                }
+            }
 
             var dto = request.ArticleDto;
 
@@ -129,7 +187,7 @@ namespace WriteReview.API.Controllers
                 article.Title = dto.Title.Trim();
 
             if (!string.IsNullOrWhiteSpace(dto.Content))
-                article.ContentPath = dto.Content;
+                article.ContentPath = new HtmlSanitizer().Sanitize(dto.Content);
 
             if (Guid.TryParse(dto.CategoryId, out var categoryGuid))
                 article.CategoryId = categoryGuid;
@@ -139,9 +197,25 @@ namespace WriteReview.API.Controllers
             if (request.IsSubmit)
             {
                 if (article.Status == ArticleStatus.Draft)
+                {
                     _articleStateService.DraftToSubmitted(article);
+                    await NotifyManagersAsync($"'{article.Title}' başlıklı makale inceleme için gönderildi.");
+                }
                 else
+                {
                     _articleStateService.RevisionsRequestedToSubmitted(article);
+                    await NotifyManagersAsync($"'{article.Title}' başlıklı makalenin revizyonu gönderildi.");
+                    
+                    // Reset expert assignments so they review V2
+                    var assignments = await _db.ArticleExpertAssignments.Where(a => a.ArticleId == article.Id).ToListAsync();
+                    foreach (var assignment in assignments)
+                    {
+                        assignment.Status = ExpertAssignmentStatus.Pending;
+                        assignment.Feedback = null;
+                        assignment.Score = null;
+                        assignment.ReviewedAt = DateTime.UtcNow;
+                    }
+                }
             }
 
             await _db.SaveChangesAsync();
@@ -149,10 +223,40 @@ namespace WriteReview.API.Controllers
         }
 
         [Authorize(Roles = "Admin,Editor,Manager,Author,Expert")]
+        [HttpGet("{articleId}/versions")]
+        public async Task<IActionResult> GetArticleVersions(Guid articleId)
+        {
+            var versions = await _db.ArticleVersions
+                .Where(v => v.ArticleId == articleId)
+                .OrderBy(v => v.VersionNumber)
+                .Select(v => new
+                {
+                    v.Id,
+                    v.VersionNumber,
+                    v.ContentPath,
+                    v.CreatedAt
+                })
+                .ToListAsync();
+
+            return Ok(versions);
+        }
+
+        [Authorize(Roles = "Admin,Editor,Manager,Author,Expert")]
         [HttpGet("{articleId}")]
         public async Task<IActionResult> GetArticleWithId(string articleId)
         {
             var articleDto = await _articleReadRepository.GetArticleWithCategoryAndAuthor(articleId);
+
+            if (User.IsInRole("Author") && !User.IsInRole("Admin") && !User.IsInRole("Manager") && !User.IsInRole("Editor"))
+            {
+                if (articleDto.Experts != null)
+                {
+                    foreach (var expert in articleDto.Experts)
+                    {
+                        expert.ExpertName = "Gizli Hakem";
+                    }
+                }
+            }
 
             return Ok(articleDto);
         }
@@ -212,6 +316,8 @@ namespace WriteReview.API.Controllers
                 })
                 .ToListAsync();
 
+            var isAuthorOnly = User.IsInRole("Author") && !User.IsInRole("Admin") && !User.IsInRole("Manager") && !User.IsInRole("Editor");
+
             var expertReviews = await _db.ArticleExpertAssignments
                 .AsNoTracking()
                 .Include(x => x.Expert)
@@ -221,8 +327,8 @@ namespace WriteReview.API.Controllers
                 .Select(x => new
                 {
                     type = "expert",
-                    expertId = x.ExpertId,
-                    expertEmail = x.Expert.Email,
+                    expertId = isAuthorOnly ? Guid.Empty : x.ExpertId,
+                    expertEmail = isAuthorOnly ? "gizli@hakem.com" : x.Expert.Email,
                     feedback = x.Feedback,
                     score = x.Score,
                     status = x.Status,
@@ -275,6 +381,7 @@ namespace WriteReview.API.Controllers
         [HttpGet("all")]
         public async Task<IActionResult> GetAll(
             [FromQuery] ArticleStatus? status = null,
+            [FromQuery] string? search = null,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10)
         {
@@ -287,6 +394,14 @@ namespace WriteReview.API.Controllers
                 q = q.Where(a => a.Status == status.Value);
             else
                 q = q.Where(a => a.Status != ArticleStatus.Draft);
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var lowerSearch = search.ToLower();
+                q = q.Where(a => (a.Title != null && a.Title.ToLower().Contains(lowerSearch)) || 
+                                 (a.Author != null && a.Author.FullName != null && a.Author.FullName.ToLower().Contains(lowerSearch)) ||
+                                 (a.Category != null && a.Category.Name != null && a.Category.Name.ToLower().Contains(lowerSearch)));
+            }
 
             var total = await q.CountAsync();
             var items = await q
@@ -306,7 +421,7 @@ namespace WriteReview.API.Controllers
                     Experts = a.ExpertAssignments
                         .Select(ea => ea.Expert.FullName)
                         .ToList(),
-                    Category = a.Category.Name,
+                    Category = a.Category != null ? a.Category.Name : null,
                     CreatedAt = a.CreatedAt,
                     UpdatedAt = a.UpdatedAt
                 })
@@ -335,6 +450,90 @@ namespace WriteReview.API.Controllers
             await _db.SaveChangesAsync();
 
             return Ok(new { Message = "Makale başarıyla silindi." });
+        }
+
+        /// <summary>
+        /// Yazarın kendi makalesini silmesini sağlar.
+        /// Yalnızca Draft, Submitted veya RevisionsRequested durumundaki makaleler silinebilir.
+        /// İncelemeye alınmış (InReview, Approved, Rejected) makaleler silinemez.
+        /// </summary>
+        [Authorize(Roles = Roles.Author)]
+        [HttpDelete("{id:guid}/author-delete")]
+        public async Task<IActionResult> AuthorDeleteArticle(Guid id)
+        {
+            var me = _actor.GetCurrent().UserId;
+
+            var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == id);
+            if (article is null)
+                return NotFound(new { Message = "Makale bulunamadı." });
+
+            if (article.AuthorId != me)
+                return Forbid();
+
+            var deletableStatuses = new[] { ArticleStatus.Draft, ArticleStatus.Submitted, ArticleStatus.RevisionsRequested };
+            if (!deletableStatuses.Contains(article.Status))
+                return BadRequest(new { Message = "İncelemeye alınmış makaleler silinemez." });
+
+            _db.Articles.Remove(article);
+            await _db.SaveChangesAsync();
+
+            return Ok(new { Message = "Makale başarıyla silindi." });
+        }
+
+        /// <summary>
+        /// Yazar, reddedilen makalesine itiraz eder.
+        /// Her makale için yalnızca 1 itiraz hakkı vardır.
+        /// </summary>
+        [Authorize(Roles = Roles.Author)]
+        [HttpPost("{id:guid}/appeal")]
+        public async Task<IActionResult> SubmitAppeal(Guid id, [FromBody] AppealRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request?.Reason) || request.Reason.Trim().Length < 20)
+                return BadRequest(new { Message = "İtiraz gerekçesi en az 20 karakter olmalıdır." });
+
+            var article = await _db.Articles.FirstOrDefaultAsync(a => a.Id == id);
+            if (article is null)
+                return NotFound(new { Message = "Makale bulunamadı." });
+
+            try
+            {
+                _articleStateService.RejectedToAppealPending(article, request.Reason);
+                await _db.SaveChangesAsync();
+                return Ok(new { id = article.Id, status = (int)article.Status, Message = "İtirazınız başarıyla iletildi." });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Forbid();
+            }
+        }
+
+        private async Task NotifyManagersAsync(string message)
+        {
+            var managerRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == Roles.Manager);
+            if (managerRole != null)
+            {
+                var managerIds = await _db.UserRoles
+                    .Where(ur => ur.RoleId == managerRole.Id)
+                    .Select(ur => ur.UserId)
+                    .ToListAsync();
+
+                foreach (var mId in managerIds)
+                {
+                    var notif = new AppNotification
+                    {
+                        UserId = mId,
+                        Title = "Yeni Makale İşlemi",
+                        Message = message
+                    };
+                    _db.Notifications.Add(notif);
+                    await _hubContext.Clients.Group(mId.ToString()).SendAsync("ReceiveNotification", notif);
+                }
+                await _db.SaveChangesAsync();
+            }
         }
     }
 }
